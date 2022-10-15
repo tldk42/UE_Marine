@@ -1,6 +1,9 @@
 # Visual Studio 2015 user specific files
 .vs/
 
+# Content 폴더는 용량 너무 큼
+Content/*
+
 # Compiled Object files
 *.slo
 *.lo
