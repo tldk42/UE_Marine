@@ -1,7 +1,7 @@
-#include "Marine.h"
+#include "Character/Marine.h"
 
-#include "Item.h"
-#include "Weapon.h"
+#include "Item/Item.h"
+#include "Item/Weapon.h"
 #include "Engine/SkeletalMeshSocket.h"
 
 // Sets default values

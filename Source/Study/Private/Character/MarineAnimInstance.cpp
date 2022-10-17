@@ -1,5 +1,5 @@
-#include "MarineAnimInstance.h"
-#include "Marine.h"
+#include "Character/MarineAnimInstance.h"
+#include "Character/Marine.h"
 #include "Kismet/KismetMathLibrary.h"
 
 void UMarineAnimInstance::UpdateAnimationProperties(float DeltaTime)

@@ -1,6 +1,5 @@
-#include "Item.h"
-
-#include "Marine.h"
+#include "Item/Item.h"
+#include "Character/Marine.h"
 
 AItem::AItem()
 	: ItemName("Default"),
