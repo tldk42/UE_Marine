@@ -3,7 +3,6 @@
 #pragma once
 
 #include "Study.h"
-#include "UserProfile.h"
 #include "GameFramework/GameModeBase.h"
 #include "StudyGameModeBase.generated.h"
 
@@ -19,7 +18,6 @@ public:
 	TSubclassOf<UUserWidget> Widget;
 
 public:
-	void DestroyActorFunction();
 
 	UFUNCTION(BlueprintCallable, Category = UIFuncs)
 	void ButtonClicked()
