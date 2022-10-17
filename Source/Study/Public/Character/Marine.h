@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Item/Weapon.h"
 #include "Sound/SoundCue.h"
 #include "Marine.generated.h"
 
@@ -18,34 +19,20 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// Called via input to turn at a given rate
-	void TurnAtRate(float Rate);
-	// Called via input to look up/down at a given rate
-	void LookUpRate(float Rate);
-
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
 
 	void TraceForItems();
 
-	void SpawnDefaultWeapon();
+	class AWeapon* SpawnDefaultWeapon() const;
 
-	FVector2D LastInput;
-
-	// True if we should trace every frame for itmes
-	bool bShouldTraceForItems;
-
-	// Number of overlapped item
-	int8 OverlappedItemCount;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
-	class AItem* LastTracedItem;
+	void EquipWeapon(AWeapon* WeaponToEquip, AWeapon* WeaponToEquip2);
 
 public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-
+public:
 	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
 
 	void CalculateCrosshairSpread(float DeltaTime);
@@ -78,6 +65,9 @@ public:
 	void OnFire();
 	void MoveForward(float Value);
 	void MoveRight(float Value);
+
+	void TurnAtRate(float Rate);  // Called via input to turn at a given rate 
+	void LookUpRate(float Rate); // Called via input to look up/down at a given rate
 
 	#pragma endregion Input
 
@@ -142,8 +132,11 @@ private:
 	#pragma endregion Particles
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
-	class AWeapon* EquippedWeapon;
-
+	AWeapon* EquippedWeapon_R;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
+	AWeapon* EquippedWeapon_L;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
@@ -157,6 +150,8 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
+	//bool bDualWeapon;
+
 	float ShootTimeDuration;
 
 	FTimerHandle CrosshairShootTimer;
@@ -168,6 +163,17 @@ private:
 
 	#pragma endregion Combat
 
+	FVector2D LastInput;
 
-public:
+	#pragma region TraceItem
+	// True if we should trace every frame for itmes
+	bool bShouldTraceForItems;
+
+	// Number of overlapped item
+	int8 OverlappedItemCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	class AItem* LastTracedItem;
+	#pragma endregion TraceItem
+
 };

@@ -40,6 +40,21 @@ public:
 	void HideWidget() const;
 	void ShowWidget() const;
 
+public:
+
+	#pragma region GETTERPROPERTY
+	
+	FORCEINLINE USphereComponent* GetAreaSphere() const
+	{
+		return AreaSphere;
+	}
+
+	FORCEINLINE UBoxComponent* GetCollisionBox() const
+	{
+		return CollisionBox;
+	}
+	#pragma endregion GETTERPROPERTY
+
 private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta=(AllowPrivateAccess = "true"))

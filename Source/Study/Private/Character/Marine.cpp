@@ -62,7 +62,9 @@ void AMarine::BeginPlay()
 		CameraCurrentFOV = Camera->FieldOfView;
 		CameraDefaultFOV = CameraCurrentFOV;
 	}
-	SpawnDefaultWeapon();
+	EquippedWeapon_L = SpawnDefaultWeapon();
+	EquippedWeapon_R = SpawnDefaultWeapon();
+	EquipWeapon(EquippedWeapon_L, EquippedWeapon_R);
 }
 
 void AMarine::TurnAtRate(float Rate)
@@ -126,7 +128,6 @@ void AMarine::TraceForItems()
 			AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
 			if (HitItem)
 			{
-				MRLOG_S(Warning);
 				HitItem->ShowWidget();
 			}
 
@@ -147,22 +148,42 @@ void AMarine::TraceForItems()
 	}
 }
 
-void AMarine::SpawnDefaultWeapon()
+AWeapon* AMarine::SpawnDefaultWeapon() const
 {
 	if (DefaultWeaponClass)
 	{
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+	}
+	return nullptr;
+}
+
+//TODO: 양손무기를 사용하는데 메서드들이 중구난방임 더 체계적인 방식 필요
+void AMarine:: EquipWeapon(AWeapon* WeaponToEquip, AWeapon* WeaponToEquip2)
+{
+	if (WeaponToEquip && WeaponToEquip2)
+	{
+		/// 기본 Weapon 클래스는 Ignore가 아닌 Block방식이다.
+		/// 이상태로 계속 한다면 플레이어와 계속해서 Blocking되므로
+		/// 플레이어가 장착한 무기는 collision반응을 Ignore로 변경해준다.
+		WeaponToEquip->GetAreaSphere()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponToEquip->GetCollisionBox()->SetCollisionResponseToAllChannels(ECR_Ignore);
+
 		const USkeletalMeshSocket* RHandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket"));
 		const USkeletalMeshSocket* LHandSocket = GetMesh()->GetSocketByName(FName("LeftHandSocket"));
+
 		if (RHandSocket)
 		{
-			AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-			RHandSocket->AttachActor(DefaultWeapon, GetMesh());
+			RHandSocket->AttachActor(WeaponToEquip, GetMesh());
+			MRLOG(Warning, TEXT("Weapon R Equipped"));
 		}
 		if (LHandSocket)
 		{
-			AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-			LHandSocket->AttachActor(DefaultWeapon, GetMesh());
+			LHandSocket->AttachActor(WeaponToEquip2, GetMesh());
+			MRLOG(Warning, TEXT("Weapon L Equipped"));
 		}
+
+		EquippedWeapon_R = WeaponToEquip;
+		EquippedWeapon_L = WeaponToEquip;
 	}
 }
 
