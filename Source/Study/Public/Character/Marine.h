@@ -4,7 +4,6 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Item/Weapon.h"
 #include "Sound/SoundCue.h"
 #include "Marine.generated.h"
 
@@ -18,6 +17,27 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	
+	#pragma region Input
+
+	void AimingBtnPressed();
+	void AimingBtnReleased();
+	void FireBtnPressed();
+	void FireBtnReleased();
+	void OnFire();
+	void MoveForward(float Value);
+	void MoveRight(float Value);
+
+	void TurnAtRate(float Rate);  // Called via input to turn at a given rate 
+	void LookUpRate(float Rate); // Called via input to look up/down at a given rate
+
+	void DropBtnPressed();
+	void DropBtnReleased();
+
+	void SwapBtnPressed();
+
+	#pragma endregion Input
+	
 
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
 
@@ -25,14 +45,22 @@ protected:
 
 	class AWeapon* SpawnDefaultWeapon() const;
 
-	void EquipWeapon(AWeapon* WeaponToEquip, AWeapon* WeaponToEquip2);
+	void EquipWeapon(AWeapon* WeaponToEquip);
 
+	void DetachWeapon();
+
+	void SwapWeapon(AWeapon* WeaponToSwap);
 public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 public:
+	FORCEINLINE bool IsAiming() const
+	{
+		return bAiming;
+	}
+	
 	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
 
 	void CalculateCrosshairSpread(float DeltaTime);
@@ -50,27 +78,7 @@ public:
 
 	// Add/ subtract 
 	void IncrementOverlappedItemCount(int8 Amount);
-
-	#pragma region Input
-
-	FORCEINLINE bool IsAiming() const
-	{
-		return bAiming;
-	}
-
-	void AimingBtnPressed();
-	void AimingBtnReleased();
-	void FireBtnPressed();
-	void FireBtnReleased();
-	void OnFire();
-	void MoveForward(float Value);
-	void MoveRight(float Value);
-
-	void TurnAtRate(float Rate);  // Called via input to turn at a given rate 
-	void LookUpRate(float Rate); // Called via input to look up/down at a given rate
-
-	#pragma endregion Input
-
+	
 private:
 	#pragma region Camera
 	// 카메라 포지션을 잡기 위한 springarm
@@ -132,10 +140,10 @@ private:
 	#pragma endregion Particles
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
-	AWeapon* EquippedWeapon_R;
+	AWeapon* HandR;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
-	AWeapon* EquippedWeapon_L;
+	AWeapon* HandL;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
@@ -146,26 +154,28 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* FireMontage;
+	
+	FTimerHandle CrosshairShootTimer;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	bool bAiming;
-
-	//bool bDualWeapon;
+	FTimerHandle AutomaticFireHandle;
 
 	float ShootTimeDuration;
 
-	FTimerHandle CrosshairShootTimer;
-
+	bool bDualWeapon;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	bool bAiming;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bFiring;
 
-	FTimerHandle AutomaticFireHandle;
 
 	#pragma endregion Combat
 
 	FVector2D LastInput;
 
 	#pragma region TraceItem
+	
 	// True if we should trace every frame for itmes
 	bool bShouldTraceForItems;
 
@@ -174,6 +184,10 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
 	class AItem* LastTracedItem;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItem;
+	
 	#pragma endregion TraceItem
 
 };

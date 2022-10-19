@@ -1,4 +1,5 @@
 #include "Item/Item.h"
+
 #include "Character/Marine.h"
 
 AItem::AItem()
@@ -33,6 +34,8 @@ void AItem::BeginPlay()
 	// Setup overlap for areasphere
 	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::SphereOverlap);
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::SphereEndOverlap);
+
+	SetItemProperties(ItemState);
 }
 
 void AItem::SphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* Actor, UPrimitiveComponent* OtherComp, int32 OhterBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -99,6 +102,59 @@ void AItem::SetActiveStar()
 	}
 }
 
+void AItem::SetItemProperties(EItemState State)
+{
+	switch (State)
+	{
+	case EItemState::EIS_Pickup:
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetVisibility(true);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		AreaSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+		CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+		CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		break;
+	case EItemState::EIS_EquipeInterping: break;
+	case EItemState::EIS_Pickedup: break;
+	case EItemState::EIS_Equipped:
+		PickupWidget->SetVisibility(false);
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetVisibility(true);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		AreaSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	case EItemState::EIS_Falling:
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		ItemMesh->SetSimulatePhysics(true);
+		ItemMesh->SetEnableGravity(true);
+		ItemMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+		ItemMesh->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+
+		AreaSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		
+		break;
+	case EItemState::EIS_MAX: break;
+	default: ;
+	}
+}
+
 
 void AItem::Tick(float DeltaTime)
 {
@@ -113,4 +169,11 @@ void AItem::HideWidget() const
 void AItem::ShowWidget() const
 {
 	PickupWidget->SetVisibility(true);
+}
+
+void AItem::SetItemState(EItemState State)
+{
+	ItemState = State;
+
+	SetItemProperties(ItemState);
 }

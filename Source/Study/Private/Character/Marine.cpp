@@ -62,9 +62,8 @@ void AMarine::BeginPlay()
 		CameraCurrentFOV = Camera->FieldOfView;
 		CameraDefaultFOV = CameraCurrentFOV;
 	}
-	EquippedWeapon_L = SpawnDefaultWeapon();
-	EquippedWeapon_R = SpawnDefaultWeapon();
-	EquipWeapon(EquippedWeapon_L, EquippedWeapon_R);
+	HandR = SpawnDefaultWeapon();
+	EquipWeapon(HandR);
 }
 
 void AMarine::TurnAtRate(float Rate)
@@ -75,6 +74,27 @@ void AMarine::TurnAtRate(float Rate)
 void AMarine::LookUpRate(float Rate)
 {
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+void AMarine::DropBtnPressed()
+{
+	DetachWeapon();
+}
+
+void AMarine::DropBtnReleased()
+{
+}
+
+void AMarine::SwapBtnPressed()
+{
+	if (TraceHitItem)
+	{
+		auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+		if (TraceHitWeapon)
+		{
+			SwapWeapon(TraceHitWeapon);
+		}
+	}
 }
 
 bool AMarine::TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation)
@@ -125,20 +145,20 @@ void AMarine::TraceForItems()
 		TraceUnderCrosshairs(ItemTraceResult, HitLocation);
 		if (ItemTraceResult.bBlockingHit)
 		{
-			AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
-			if (HitItem)
+			TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
+			if (TraceHitItem)
 			{
-				HitItem->ShowWidget();
+				TraceHitItem->ShowWidget();
 			}
 
 			if (LastTracedItem)
 			{
-				if (HitItem != LastTracedItem)
+				if (TraceHitItem != LastTracedItem)
 				{
 					LastTracedItem->HideWidget();
 				}
 			}
-			LastTracedItem = HitItem;
+			LastTracedItem = TraceHitItem;
 		}
 	}
 	else if (LastTracedItem)
@@ -158,33 +178,73 @@ AWeapon* AMarine::SpawnDefaultWeapon() const
 }
 
 //TODO: 양손무기를 사용하는데 메서드들이 중구난방임 더 체계적인 방식 필요
-void AMarine:: EquipWeapon(AWeapon* WeaponToEquip, AWeapon* WeaponToEquip2)
+void AMarine::EquipWeapon(AWeapon* WeaponToEquip)
 {
-	if (WeaponToEquip && WeaponToEquip2)
+	if (WeaponToEquip)
 	{
 		/// 기본 Weapon 클래스는 Ignore가 아닌 Block방식이다.
 		/// 이상태로 계속 한다면 플레이어와 계속해서 Blocking되므로
-		/// 플레이어가 장착한 무기는 collision반응을 Ignore로 변경해준다.
-		WeaponToEquip->GetAreaSphere()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		WeaponToEquip->GetCollisionBox()->SetCollisionResponseToAllChannels(ECR_Ignore);
+		/// 플레이어가 장착한 무기는 collision반응을 Ignore로 변경해준다. ---> Item -> SetItemProperty로 변경
 
 		const USkeletalMeshSocket* RHandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket"));
-		const USkeletalMeshSocket* LHandSocket = GetMesh()->GetSocketByName(FName("LeftHandSocket"));
 
 		if (RHandSocket)
 		{
 			RHandSocket->AttachActor(WeaponToEquip, GetMesh());
+			HandR = WeaponToEquip;
+			HandR->SetItemState(EItemState::EIS_Equipped);
 			MRLOG(Warning, TEXT("Weapon R Equipped"));
 		}
-		if (LHandSocket)
-		{
-			LHandSocket->AttachActor(WeaponToEquip2, GetMesh());
-			MRLOG(Warning, TEXT("Weapon L Equipped"));
-		}
 
-		EquippedWeapon_R = WeaponToEquip;
-		EquippedWeapon_L = WeaponToEquip;
+		if (WeaponToEquip->IsDualWeapon())
+		{
+			const USkeletalMeshSocket* LHandSocket = GetMesh()->GetSocketByName(FName("LeftHandSocket"));
+			if (LHandSocket)
+			{
+				auto Weapon = GetWorld()->SpawnActor<AWeapon>(WeaponToEquip->GetClass());
+				InitStaticDuplicateObjectParams(WeaponToEquip, Weapon);
+				LHandSocket->AttachActor(Weapon, GetMesh());
+				HandL = Weapon;
+				HandL->SetItemState(EItemState::EIS_Equipped);
+				MRLOG(Warning, TEXT("Weapon L Equipped"));
+			}
+		}
 	}
+}
+
+void AMarine::DetachWeapon()
+{
+	FDetachmentTransformRules DetachmentTransformRules(
+		EDetachmentRule::KeepWorld,
+		true);
+
+	if (HandR)
+	{
+		HandR->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
+		HandR->SetItemState(EItemState::EIS_Falling);
+		HandR->ThrowWeapon();
+		if (HandR->IsDualWeapon())
+		{
+			if (HandL)
+			{
+				HandL->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
+				//HandL->SetItemState(EItemState::EIS_Falling);
+				//HandL->ThrowWeapon();
+				// HandL->GetClass()->ConditionalBeginDestroy();
+				HandL->Destroy();
+			}
+			HandL = nullptr;
+		}
+		HandR = nullptr;
+	}
+}
+
+void AMarine::SwapWeapon(AWeapon* WeaponToSwap)
+{
+	DetachWeapon();
+	EquipWeapon(WeaponToSwap);
+	TraceHitItem = nullptr;
+	LastTracedItem = nullptr;
 }
 
 // Called every frame
@@ -232,6 +292,9 @@ void AMarine::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AMarine::FireBtnReleased);
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AMarine::AimingBtnPressed);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AMarine::AimingBtnReleased);
+	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AMarine::DropBtnPressed);
+	PlayerInputComponent->BindAction("Drop", IE_Released, this, &AMarine::DropBtnReleased);
+	PlayerInputComponent->BindAction("Swap", IE_Pressed, this, &AMarine::SwapBtnPressed);
 
 	PlayerInputComponent->BindAxis("Forward", this, &AMarine::MoveForward);
 	PlayerInputComponent->BindAxis("Right", this, &AMarine::MoveRight);
@@ -251,7 +314,7 @@ void AMarine::OnFire()
 
 	auto turnRate = FMath::RandRange(-0.08f, 0.08f);
 	TurnAtRate(turnRate);
-	LookUpRate(-0.15f);
+	bAiming ? LookUpRate(-0.8f) : LookUpRate(-0.15f);
 
 	if (FireSound)
 	{
