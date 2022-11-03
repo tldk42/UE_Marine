@@ -341,97 +341,99 @@ void AMarine::FireBtnPressed()
 
 void AMarine::OnFire()
 {
-	bFiring = true;
-
-	auto turnRate = FMath::RandRange(-0.08f, 0.08f);
-	TurnAtRate(turnRate);
-	bAiming ? LookUpRate(-0.8f) : LookUpRate(-0.15f);
-
-	if (FireSound)
+	if (WeaponHasAmmo())
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
-	}
+		bFiring = true;
 
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("Muzzle_01");
-	const USkeletalMeshSocket* BarrelSocket2 = GetMesh()->GetSocketByName("Muzzle_02");
-	if (BarrelSocket && BarrelSocket2)
-	{
-		FVector          BeamEnd;
-		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-		const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(GetMesh());
-		bool             bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
+		auto turnRate = FMath::RandRange(-0.08f, 0.08f);
+		TurnAtRate(turnRate);
+		bAiming ? LookUpRate(-0.8f) : LookUpRate(-0.15f);
 
-		if (Muzzle_LFlash)
+		if (FireSound)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_LFlash, SocketTransform);
+			UGameplayStatics::PlaySound2D(this, FireSound);
 		}
 
-		if (Muzzle_RFlash && bDualWeapon)
+		const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("Muzzle_01");
+		const USkeletalMeshSocket* BarrelSocket2 = GetMesh()->GetSocketByName("Muzzle_02");
+		if (BarrelSocket && BarrelSocket2)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_RFlash, SocketTransform2);
-		}
+			FVector          BeamEnd;
+			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+			const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(GetMesh());
+			bool             bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
 
-		if (bBeamEnd)
-		{
-			if (ImpactParticles)
+			if (Muzzle_LFlash)
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_LFlash, SocketTransform);
 			}
 
-			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
-				GetWorld(),
-				BeamParticles,
-				SocketTransform);
-			if (Beam)
+			if (Muzzle_RFlash && bDualWeapon)
 			{
-				Beam->SetVectorParameter(FName("Target"), BeamEnd);
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_RFlash, SocketTransform2);
 			}
-		}
-		/*
-		// FHitResult    FireHit;
-		// const FVector TraceStart{SocketTransform.GetLocation()};
-		// const FQuat   Rotation{SocketTransform.GetRotation()};
-		// const FVector RotationAxis{Rotation.GetAxisX()};
-		// const FVector TraceEnd {TraceStart + RotationAxis * 50'000.f};
-		//
-		// FVector BeamEndPoint {TraceEnd};
-		//
-		// GetWorld()->LineTraceSingleByChannel(FireHit, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility);
-		// if (FireHit.bBlockingHit)
-		// {
-		// 	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 2.f);
-		// 	BeamEndPoint = FireHit.Location;
-		// 	
-		// 	if (ImpactParticles)
-		// 	{
-		// 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, FireHit.Location);
-		// 	}
-		// }
-		//
-		// if (BeamParticles)
-		// {
-		// 	UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
-		// 	if (Beam)
-		// 	{
-		// 		Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
-		// 	}
-		// }
 
-		*/
-	}
+			if (bBeamEnd)
+			{
+				if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
+				}
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && FireMontage)
-	{
-		AnimInstance->Montage_Play(FireMontage);
-		AnimInstance->Montage_JumpToSection(FName("StartFire"));
-	}
-
-	if (HandR)
-	{
-		HandR->FireAmmo();
-	}
+				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+					GetWorld(),
+					BeamParticles,
+					SocketTransform);
+				if (Beam)
+				{
+					Beam->SetVectorParameter(FName("Target"), BeamEnd);
+				}
+			}
+			/*
+			// FHitResult    FireHit;
+			// const FVector TraceStart{SocketTransform.GetLocation()};
+			// const FQuat   Rotation{SocketTransform.GetRotation()};
+			// const FVector RotationAxis{Rotation.GetAxisX()};
+			// const FVector TraceEnd {TraceStart + RotationAxis * 50'000.f};
+			//
+			// FVector BeamEndPoint {TraceEnd};
+			//
+			// GetWorld()->LineTraceSingleByChannel(FireHit, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility);
+			// if (FireHit.bBlockingHit)
+			// {
+			// 	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 2.f);
+			// 	BeamEndPoint = FireHit.Location;
+			// 	
+			// 	if (ImpactParticles)
+			// 	{
+			// 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, FireHit.Location);
+			// 	}
+			// }
+			//
+			// if (BeamParticles)
+			// {
+			// 	UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
+			// 	if (Beam)
+			// 	{
+			// 		Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+			// 	}
+			// }
 	
+			*/
+		}
+
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && FireMontage)
+		{
+			AnimInstance->Montage_Play(FireMontage);
+			AnimInstance->Montage_JumpToSection(FName("StartFire"));
+		}
+
+		if (HandR)
+		{
+			HandR->FireAmmo();
+		}
+	}
 	GetWorldTimerManager().SetTimer(CrosshairShootTimer, this, &AMarine::FireBtnReleased, 0.1f, false);
 }
 
