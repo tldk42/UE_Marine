@@ -1,5 +1,6 @@
 #include "Character/Marine.h"
 
+#include "AIHelpers.h"
 #include "Item/Item.h"
 #include "Item/Weapon.h"
 #include "Engine/SkeletalMeshSocket.h"
@@ -25,7 +26,10 @@ AMarine::AMarine()
 	CrosshairInAirFactor(0.f),
 	ShootTimeDuration(0.05f),
 	bFiring(false),
-	bShouldTraceForItems(false)
+	bShouldTraceForItems(false),
+	Starting5mmAmmo(10),
+	Starting7mmAmmo(10),
+	Starting9mmAmmo(10)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -64,11 +68,15 @@ void AMarine::BeginPlay()
 	}
 	HandR = SpawnDefaultWeapon();
 	EquipWeapon(HandR);
+
+	InitializeAmmoMap();
 }
 
 void AMarine::TurnAtRate(float Rate)
 {
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+
+	TurnInPlaceDirection = BaseTurnRate * Rate;
 }
 
 void AMarine::LookUpRate(float Rate)
@@ -198,6 +206,7 @@ void AMarine::EquipWeapon(AWeapon* WeaponToEquip)
 
 		if (WeaponToEquip->IsDualWeapon())
 		{
+			bDualWeapon = true;
 			const USkeletalMeshSocket* LHandSocket = GetMesh()->GetSocketByName(FName("LeftHandSocket"));
 			if (LHandSocket)
 			{
@@ -208,6 +217,10 @@ void AMarine::EquipWeapon(AWeapon* WeaponToEquip)
 				HandL->SetItemState(EItemState::EIS_Equipped);
 				MRLOG(Warning, TEXT("Weapon L Equipped"));
 			}
+		}
+		else
+		{
+			bDualWeapon = false;
 		}
 	}
 }
@@ -245,6 +258,13 @@ void AMarine::SwapWeapon(AWeapon* WeaponToSwap)
 	EquipWeapon(WeaponToSwap);
 	TraceHitItem = nullptr;
 	LastTracedItem = nullptr;
+}
+
+void AMarine::InitializeAmmoMap()
+{
+	AmmoMap.Add(EAmmoType2::EAT_9mm, Starting9mmAmmo);
+	AmmoMap.Add(EAmmoType2::EAT_5mm, Starting5mmAmmo);
+	AmmoMap.Add(EAmmoType2::EAT_7mm, Starting7mmAmmo);
 }
 
 // Called every frame
@@ -330,14 +350,14 @@ void AMarine::OnFire()
 		const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(GetMesh());
 		bool             bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
 
-		if (MuzzleFlash)
+		if (Muzzle_LFlash)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_LFlash, SocketTransform);
 		}
 
-		if (MuzzleFlash2)
+		if (Muzzle_RFlash && bDualWeapon)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash2, SocketTransform2);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_RFlash, SocketTransform2);
 		}
 
 		if (bBeamEnd)

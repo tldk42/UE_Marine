@@ -23,18 +23,21 @@ void UMarineAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		bIsAccelerating =
 			MarineCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
+		TurnRate = MarineCharacter->GetTurnRate();
+
 		FRotator AimRotation = MarineCharacter->GetBaseAimRotation();
 		FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(MarineCharacter->GetVelocity());
 
 		MovementOffset = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation).Yaw;
-		
+
 		if (MarineCharacter->GetVelocity().Size() > 0.f)
 		{
 			LastMovementOffset = MovementOffset;
 		}
+
 		bAiming = MarineCharacter->IsAiming();
+		bDualWeapon = MarineCharacter->IsDualWeapon() ? true : false;
 	}
-	
 }
 
 void UMarineAnimInstance::NativeInitializeAnimation()

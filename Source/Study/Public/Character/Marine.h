@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Study.h"
+#include "EAmmoType2.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -17,7 +18,12 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+public:
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+protected:
 	#pragma region Input
 
 	void AimingBtnPressed();
@@ -28,7 +34,7 @@ protected:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
-	void TurnAtRate(float Rate);  // Called via input to turn at a given rate 
+	void TurnAtRate(float Rate); // Called via input to turn at a given rate 
 	void LookUpRate(float Rate); // Called via input to look up/down at a given rate
 
 	void DropBtnPressed();
@@ -37,33 +43,40 @@ protected:
 	void SwapBtnPressed();
 
 	#pragma endregion Input
-	
 
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
+
+	void CalculateCrosshairSpread(float DeltaTime);
+	
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
 
 	void TraceForItems();
 
 	class AWeapon* SpawnDefaultWeapon() const;
-
 	void EquipWeapon(AWeapon* WeaponToEquip);
-
 	void DetachWeapon();
-
 	void SwapWeapon(AWeapon* WeaponToSwap);
-public:
-	virtual void Tick(float DeltaTime) override;
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	void InitializeAmmoMap();
 public:
+	void IncrementOverlappedItemCount(int8 Amount);
+
+#pragma region GETTER
+
+	FORCEINLINE float GetTurnRate()const
+	{
+		return TurnInPlaceDirection;
+	}
+	
+	FORCEINLINE bool IsDualWeapon() const
+	{
+		return bDualWeapon;
+	}
+
 	FORCEINLINE bool IsAiming() const
 	{
 		return bAiming;
 	}
-	
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
-
-	void CalculateCrosshairSpread(float DeltaTime);
 
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE float GetCrosshairSpreadMultiplier() const
@@ -76,9 +89,9 @@ public:
 		return OverlappedItemCount;
 	}
 
-	// Add/ subtract 
-	void IncrementOverlappedItemCount(int8 Amount);
-	
+
+#pragma endregion GETTER
+
 private:
 	#pragma region Camera
 	// 카메라 포지션을 잡기 위한 springarm
@@ -109,6 +122,8 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crosshairs", meta = (AllowPrivateAccess = "true"))
 	float CrosshairShootingFactor;
 
+	float TurnInPlaceDirection;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	float BaseTurnRate;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
@@ -127,45 +142,57 @@ private:
 
 	#pragma region Particles
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* MuzzleFlash;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* MuzzleFlash2;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* Muzzle_LFlash;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* Muzzle_RFlash;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* ImpactParticles;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* BeamParticles;
+
 	#pragma endregion Particles
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandR;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandL;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
-	UPROPERTY
-	(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Ammo", meta = (AllowPrivateAccess = "true"))
+	TMap<EAmmoType2, int32> AmmoMap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Ammo", meta = (AllowPrivateAccess = "true"))
+	int32 Starting9mmAmmo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Ammo", meta = (AllowPrivateAccess = "true"))
+	int32 Starting5mmAmmo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Ammo", meta = (AllowPrivateAccess = "true"))
+	int32 Starting7mmAmmo;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
 	USoundCue* FireSound;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* FireMontage;
-	
+
 	FTimerHandle CrosshairShootTimer;
 
 	FTimerHandle AutomaticFireHandle;
 
 	float ShootTimeDuration;
 
-	bool bDualWeapon;
-	
+	bool bDualWeapon;				
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bFiring;
 
@@ -175,7 +202,7 @@ private:
 	FVector2D LastInput;
 
 	#pragma region TraceItem
-	
+
 	// True if we should trace every frame for itmes
 	bool bShouldTraceForItems;
 
@@ -187,7 +214,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item", meta = (AllowPrivateAccess = "true"))
 	AItem* TraceHitItem;
-	
-	#pragma endregion TraceItem
 
+	#pragma endregion TraceItem
 };
