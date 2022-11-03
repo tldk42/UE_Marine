@@ -58,6 +58,8 @@ protected:
 	void SwapWeapon(AWeapon* WeaponToSwap);
 
 	void InitializeAmmoMap();
+
+	bool WeaponHasAmmo() const;
 public:
 	void IncrementOverlappedItemCount(int8 Amount);
 
@@ -160,6 +162,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandL;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
+	AWeapon* WeaponTest;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;

@@ -38,6 +38,11 @@ void AWeapon::ThrowWeapon()
 	GetWorldTimerManager().SetTimer(ThrowWeaponTimer, this, &AWeapon::StopFalling, ThrowWeaponTime);
 }
 
+void AWeapon::FireAmmo()
+{
+	Ammo = Ammo - 1 < 0 ? 0 : (Ammo - 1);
+}
+
 
 void AWeapon::StopFalling()
 {

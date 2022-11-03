@@ -267,6 +267,14 @@ void AMarine::InitializeAmmoMap()
 	AmmoMap.Add(EAmmoType2::EAT_7mm, Starting7mmAmmo);
 }
 
+bool AMarine::WeaponHasAmmo() const
+{
+	if (HandR == nullptr)
+		return false;
+
+	return HandR->GetAmmo() > 0;
+}
+
 // Called every frame
 void AMarine::Tick(float DeltaTime)
 {
@@ -325,7 +333,10 @@ void AMarine::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AMarine::FireBtnPressed()
 {
-	GetWorld()->GetTimerManager().SetTimer(AutomaticFireHandle, this, &AMarine::OnFire, 0.1f, true);
+	if (WeaponHasAmmo())
+	{
+		GetWorld()->GetTimerManager().SetTimer(AutomaticFireHandle, this, &AMarine::OnFire, 0.1f, true);
+	}
 }
 
 void AMarine::OnFire()
@@ -415,6 +426,12 @@ void AMarine::OnFire()
 		AnimInstance->Montage_Play(FireMontage);
 		AnimInstance->Montage_JumpToSection(FName("StartFire"));
 	}
+
+	if (HandR)
+	{
+		HandR->FireAmmo();
+	}
+	
 	GetWorldTimerManager().SetTimer(CrosshairShootTimer, this, &AMarine::FireBtnReleased, 0.1f, false);
 }
 
