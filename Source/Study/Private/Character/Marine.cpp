@@ -349,18 +349,22 @@ void AMarine::OnFire()
 		TurnAtRate(turnRate);
 		bAiming ? LookUpRate(-0.8f) : LookUpRate(-0.15f);
 
+		if (HandR == nullptr) return;
+		
 		if (FireSound)
 		{
 			UGameplayStatics::PlaySound2D(this, FireSound);
 		}
 
-		const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("Muzzle_01");
-		const USkeletalMeshSocket* BarrelSocket2 = GetMesh()->GetSocketByName("Muzzle_02");
+		const USkeletalMeshSocket* BarrelSocket = HandR->GetItemMesh()->GetSocketByName("BarrelSocket_R");
+		const USkeletalMeshSocket* BarrelSocket2 = HandL->GetItemMesh()->GetSocketByName("BarrelSocket_L");
+		
 		if (BarrelSocket && BarrelSocket2)
 		{
 			FVector          BeamEnd;
-			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-			const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(GetMesh());
+			//const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(HandR->GetItemMesh());
+			const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(HandL->GetItemMesh());
 			bool             bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
 
 			if (Muzzle_LFlash)
