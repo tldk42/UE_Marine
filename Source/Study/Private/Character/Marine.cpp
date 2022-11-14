@@ -204,6 +204,9 @@ void AMarine::EquipWeapon(AWeapon* WeaponToEquip)
 			MRLOG(Warning, TEXT("Weapon R Equipped"));
 		}
 
+		///TODO: 양손무기 부착 해결
+		/// 양손 무기는 기본 무기를 복제하는 방식으로 왼쪽으로 붙이고 있다
+		/// Spawn을 반복하면 새 개체가 생성 소멸 반복 -> 메모리 파편화가능성 높음
 		if (WeaponToEquip->IsDualWeapon())
 		{
 			bDualWeapon = true;
@@ -331,120 +334,134 @@ void AMarine::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AMarine::LookUpRate);
 }
 
-void AMarine::FireBtnPressed()
+void AMarine::StartFireTimer()
 {
+	CombatState = ECombatState::ECS_FireTimerInProgress;
+
+	GetWorldTimerManager().SetTimer(
+		AutomaticFireHandle,
+		this,
+		&AMarine::AutoFireReset,
+		0.1f);
+}
+
+void AMarine::AutoFireReset()
+{
+	CombatState = ECombatState::ECS_UnOccupied;
+
 	if (WeaponHasAmmo())
 	{
-		GetWorld()->GetTimerManager().SetTimer(AutomaticFireHandle, this, &AMarine::OnFire, 0.1f, true);
+		if (bFireBtnPressed)
+		{
+			FireWeapon();
+		}
+	}
+	else
+	{
+		// Reload Weapon
 	}
 }
 
-void AMarine::OnFire()
+void AMarine::FireBtnPressed()
 {
+	bFireBtnPressed = true;
 	if (WeaponHasAmmo())
 	{
-		bFiring = true;
+		FireWeapon();
+	}
+}
 
-		auto turnRate = FMath::RandRange(-0.08f, 0.08f);
-		TurnAtRate(turnRate);
-		bAiming ? LookUpRate(-0.8f) : LookUpRate(-0.15f);
+void AMarine::FireWeapon()
+{
+	if (HandR == nullptr)
+		return;
 
-		if (HandR == nullptr) return;
+	if (CombatState != ECombatState::ECS_UnOccupied)
+		return;
+
+	if (WeaponHasAmmo())
+	{
+		// Play Fire Sound
+		PlayFireSound();
 		
-		if (FireSound)
+		// Send Bullet
+		SendBullet();
+
+		// Play Hip fire Montage
+		PlayHipFireMontage();
+
+		// Decrease Ammo
+		HandR->FireAmmo();
+
+		StartFireTimer();
+	}
+}
+
+void AMarine::PlayFireSound() const
+{
+	// Play Fire sound
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+}
+
+void AMarine::SendBullet()
+{
+	const USkeletalMeshSocket* BarrelSocket = HandR->GetItemMesh()->GetSocketByName("BarrelSocket_R");
+
+	if (BarrelSocket)
+	{
+		FVector BeamEnd;
+		//const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(HandR->GetItemMesh());
+
+		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
+
+		if (Muzzle_RFlash)
 		{
-			UGameplayStatics::PlaySound2D(this, FireSound);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_RFlash, SocketTransform);
 		}
 
-		const USkeletalMeshSocket* BarrelSocket = HandR->GetItemMesh()->GetSocketByName("BarrelSocket_R");
-		const USkeletalMeshSocket* BarrelSocket2 = HandL->GetItemMesh()->GetSocketByName("BarrelSocket_L");
-		
-		if (BarrelSocket && BarrelSocket2)
+		if (Muzzle_LFlash && HandR->IsDualWeapon())
 		{
-			FVector          BeamEnd;
-			//const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(HandR->GetItemMesh());
-			const FTransform SocketTransform2 = BarrelSocket2->GetSocketTransform(HandL->GetItemMesh());
-			bool             bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
-
-			if (Muzzle_LFlash)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_LFlash, SocketTransform);
-			}
-
-			if (Muzzle_RFlash && bDualWeapon)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_RFlash, SocketTransform2);
-			}
-
-			if (bBeamEnd)
-			{
-				if (ImpactParticles)
-				{
-					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
-				}
-
-				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
-					GetWorld(),
-					BeamParticles,
-					SocketTransform);
-				if (Beam)
-				{
-					Beam->SetVectorParameter(FName("Target"), BeamEnd);
-				}
-			}
-			/*
-			// FHitResult    FireHit;
-			// const FVector TraceStart{SocketTransform.GetLocation()};
-			// const FQuat   Rotation{SocketTransform.GetRotation()};
-			// const FVector RotationAxis{Rotation.GetAxisX()};
-			// const FVector TraceEnd {TraceStart + RotationAxis * 50'000.f};
-			//
-			// FVector BeamEndPoint {TraceEnd};
-			//
-			// GetWorld()->LineTraceSingleByChannel(FireHit, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility);
-			// if (FireHit.bBlockingHit)
-			// {
-			// 	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 2.f);
-			// 	BeamEndPoint = FireHit.Location;
-			// 	
-			// 	if (ImpactParticles)
-			// 	{
-			// 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, FireHit.Location);
-			// 	}
-			// }
-			//
-			// if (BeamParticles)
-			// {
-			// 	UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
-			// 	if (Beam)
-			// 	{
-			// 		Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
-			// 	}
-			// }
-	
-			*/
+			const USkeletalMeshSocket* BarrelSocket2 = HandL->GetItemMesh()->GetSocketByName("BarrelSocket_L");
+			const FTransform           SocketTransform2 = BarrelSocket2->GetSocketTransform(HandL->GetItemMesh());
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), Muzzle_LFlash, SocketTransform2);
 		}
 
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		if (AnimInstance && FireMontage)
+		if (bBeamEnd)
 		{
-			AnimInstance->Montage_Play(FireMontage);
-			AnimInstance->Montage_JumpToSection(FName("StartFire"));
-		}
+			if (ImpactParticles)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
+			}
 
-		if (HandR)
-		{
-			HandR->FireAmmo();
+			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				BeamParticles,
+				SocketTransform);
+			if (Beam)
+			{
+				Beam->SetVectorParameter(FName("Target"), BeamEnd);
+			}
 		}
 	}
-	GetWorldTimerManager().SetTimer(CrosshairShootTimer, this, &AMarine::FireBtnReleased, 0.1f, false);
+}
+
+void AMarine::PlayHipFireMontage() const
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && FireMontage)
+	{
+		AnimInstance->Montage_Play(FireMontage);
+		AnimInstance->Montage_JumpToSection(FName("StartFire"));
+	}
 }
 
 void AMarine::FireBtnReleased()
 {
-	bFiring = false;
-	GetWorld()->GetTimerManager().ClearTimer(AutomaticFireHandle);
+	bFireBtnPressed = false;
 }
 
 bool AMarine::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation)

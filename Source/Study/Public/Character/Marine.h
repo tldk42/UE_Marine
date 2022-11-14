@@ -8,6 +8,18 @@
 #include "Sound/SoundCue.h"
 #include "Marine.generated.h"
 
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_UnOccupied UMETA(DisplayName = "UnOcuupied"),
+	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+
+
 UCLASS()
 class STUDY_API AMarine : public ACharacter
 {
@@ -26,11 +38,19 @@ public:
 protected:
 	#pragma region Input
 
+	void StartFireTimer();
+	void AutoFireReset();
+	
 	void AimingBtnPressed();
 	void AimingBtnReleased();
 	void FireBtnPressed();
 	void FireBtnReleased();
-	void OnFire();
+	void FireWeapon();
+	void PlayFireSound() const;
+	void SendBullet();
+	void PlayHipFireMontage() const;
+
+	
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
@@ -157,14 +177,14 @@ private:
 
 	#pragma endregion Particles
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | State", meta = (AllowPrivateAccess = "true"))
+	ECombatState CombatState;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandR;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandL;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
-	AWeapon* WeaponTest;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
@@ -198,6 +218,8 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
+	bool bFireBtnPressed;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bFiring;
 
