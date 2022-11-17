@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Study.h"
-#include "EAmmoType2.h"
+#include "Item/AmmoType.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -17,7 +17,6 @@ enum class ECombatState : uint8
 
 	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
-
 
 
 UCLASS()
@@ -40,17 +39,23 @@ protected:
 
 	void StartFireTimer();
 	void AutoFireReset();
-	
+
+	void ReloadBtnPressed();
 	void AimingBtnPressed();
 	void AimingBtnReleased();
 	void FireBtnPressed();
 	void FireBtnReleased();
+
+	void ReloadWeapon();
+	bool CarryingAmmo();
+
+
 	void FireWeapon();
 	void PlayFireSound() const;
 	void SendBullet();
 	void PlayHipFireMontage() const;
 
-	
+
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
@@ -67,29 +72,30 @@ protected:
 	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
 
 	void CalculateCrosshairSpread(float DeltaTime);
-	
+
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
 
 	void TraceForItems();
 
 	class AWeapon* SpawnDefaultWeapon() const;
-	void EquipWeapon(AWeapon* WeaponToEquip);
-	void DetachWeapon();
-	void SwapWeapon(AWeapon* WeaponToSwap);
+	void           EquipWeapon(AWeapon* WeaponToEquip);
+	void           DetachWeapon();
+	void           SwapWeapon(AWeapon* WeaponToSwap);
 
 	void InitializeAmmoMap();
 
 	bool WeaponHasAmmo() const;
+
 public:
 	void IncrementOverlappedItemCount(int8 Amount);
 
 #pragma region GETTER
 
-	FORCEINLINE float GetTurnRate()const
+	FORCEINLINE float GetTurnRate() const
 	{
 		return TurnInPlaceDirection;
 	}
-	
+
 	FORCEINLINE bool IsDualWeapon() const
 	{
 		return bDualWeapon;
@@ -145,7 +151,7 @@ private:
 	float CrosshairShootingFactor;
 
 	float TurnInPlaceDirection;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	float BaseTurnRate;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
@@ -179,7 +185,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | State", meta = (AllowPrivateAccess = "true"))
 	ECombatState CombatState;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
 	AWeapon* HandR;
 
@@ -200,12 +206,30 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Ammo", meta = (AllowPrivateAccess = "true"))
 	int32 Starting7mmAmmo;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
 	USoundCue* FireSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
-	UAnimMontage* FireMontage;
+	UAnimMontage* FireMontageDefault;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* FireMontageRifle;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat | Effect", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontageRifle;
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
+
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+	UFUNCTION(BlueprintCallable)
+	void ReleaseClip();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
+	FTransform ClipTransform;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat | Weapon", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* HandSceneComponent;
 
 	FTimerHandle CrosshairShootTimer;
 
@@ -213,13 +237,13 @@ private:
 
 	float ShootTimeDuration;
 
-	bool bDualWeapon;				
+	bool bDualWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
 	bool bFireBtnPressed;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bFiring;
 

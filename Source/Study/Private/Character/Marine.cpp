@@ -54,6 +54,8 @@ AMarine::AMarine()
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
 	GetCharacterMovement()->JumpZVelocity = 600.f;
 	GetCharacterMovement()->AirControl = 0.2f;
+
+	HandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HandSceneComp"));
 }
 
 // Called when the game starts or when spawned
@@ -319,6 +321,7 @@ void AMarine::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMarine::Jump);
 
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AMarine::ReloadBtnPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AMarine::FireBtnPressed);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AMarine::FireBtnReleased);
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AMarine::AimingBtnPressed);
@@ -362,6 +365,11 @@ void AMarine::AutoFireReset()
 	}
 }
 
+void AMarine::ReloadBtnPressed()
+{
+	ReloadWeapon();
+}
+
 void AMarine::FireBtnPressed()
 {
 	bFireBtnPressed = true;
@@ -383,7 +391,7 @@ void AMarine::FireWeapon()
 	{
 		// Play Fire Sound
 		PlayFireSound();
-		
+
 		// Send Bullet
 		SendBullet();
 
@@ -452,9 +460,16 @@ void AMarine::SendBullet()
 void AMarine::PlayHipFireMontage() const
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && FireMontage)
+	if (AnimInstance && FireMontageDefault && FireMontageRifle)
 	{
-		AnimInstance->Montage_Play(FireMontage);
+		if (!bDualWeapon)
+		{
+			AnimInstance->Montage_Play(FireMontageRifle);
+		}
+		else
+		{
+			AnimInstance->Montage_Play(FireMontageDefault);
+		}
 		AnimInstance->Montage_JumpToSection(FName("StartFire"));
 	}
 }
@@ -462,6 +477,65 @@ void AMarine::PlayHipFireMontage() const
 void AMarine::FireBtnReleased()
 {
 	bFireBtnPressed = false;
+}
+
+void AMarine::ReloadWeapon()
+{
+	if (CombatState != ECombatState::ECS_UnOccupied)
+		return;
+	if (HandR == nullptr)
+		return;
+
+	// 올바른 탄약을 가지고있는지 확인
+	if (CarryingAmmo())
+	{
+		// TODO: 무기 타입에 따른 Enum 생성
+		// TODO: switch문
+
+		CombatState = ECombatState::ECS_Reloading;
+
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && ReloadMontageRifle)
+		{
+			AnimInstance->Montage_Play(ReloadMontageRifle);
+			AnimInstance->Montage_JumpToSection(HandR->GetReloadMontage());
+		}
+	}
+}
+
+bool AMarine::CarryingAmmo()
+{
+	if (HandR == nullptr)
+		return false;
+	auto AmmoType = HandR->GetAmmoType();
+
+	if (AmmoMap.Contains(AmmoType))
+	{
+		return AmmoMap[AmmoType] > 0;
+	}
+	return false;
+}
+
+void AMarine::GrabClip()
+{
+	if (HandR == nullptr) return;
+	if (HandSceneComponent == nullptr) return;
+
+	// Index for the Clip Bone
+	int32 ClipBoneIndex{ HandR->GetItemMesh()->GetBoneIndex(HandR->GetClipBoneName())};
+	// Clip의 Transform 저장
+	ClipTransform = HandR->GetItemMesh()->GetBoneTransform(ClipBoneIndex);
+
+	FAttachmentTransformRules AttachmentTransformRules(EAttachmentRule::KeepRelative, true);
+	HandSceneComponent->AttachToComponent(GetMesh(), AttachmentTransformRules, FName(TEXT("hand_l")));
+	HandSceneComponent->SetWorldTransform(ClipTransform);
+
+	HandR->SetMovingClip(true);
+}
+
+void AMarine::ReleaseClip()
+{
+	HandR->SetMovingClip(false);
 }
 
 bool AMarine::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation)
@@ -500,6 +574,37 @@ void AMarine::IncrementOverlappedItemCount(int8 Amount)
 		OverlappedItemCount += Amount;
 		bShouldTraceForItems = true;
 	}
+}
+
+void AMarine::FinishReloading()
+{
+	if (HandR == nullptr)
+		return;
+
+	const auto AmmoType = HandR->GetAmmoType();
+	
+	// TODO: AmmoMap 업데이트
+	if (AmmoMap.Contains(AmmoType))
+	{
+		int32 CarriedAmmo = AmmoMap[AmmoType];
+
+		const int32 MagEmptySpace = HandR->GetMagazineCapacity() - HandR->GetAmmo();
+
+		if (MagEmptySpace > CarriedAmmo)
+		{
+			HandR->ReloadAmmo(CarriedAmmo);
+			CarriedAmmo = 0;
+		}
+		else
+		{
+			HandR->ReloadAmmo(MagEmptySpace);
+			CarriedAmmo -= MagEmptySpace;
+		}
+		AmmoMap.Add(AmmoType, CarriedAmmo);
+
+	}
+	
+	CombatState = ECombatState::ECS_UnOccupied;
 }
 
 void AMarine::AimingBtnPressed()
